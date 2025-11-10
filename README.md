@@ -1,6 +1,6 @@
 # Dockerverse — Run Docker containers from a web app
 
-This repository contains a minimal React + TypeScript web app (Vite) that provides a UI for running and managing Docker containers (pods, images, container actions and logs). The webapp is designed to interact with a backend that controls Docker on the host — the repository contains the frontend shell and documentation to wire it into a Docker control service.
+This repository contains a minimal Next.js + TypeScript web app that provides a UI for running and managing Docker containers (pods, images, container actions and logs). The webapp is designed to interact with a backend that controls Docker on the host — the repository contains the frontend shell and documentation to wire it into a Docker control service.
 
 ## Table of context
 1. [Project Overview](#project-overview)
@@ -11,7 +11,7 @@ This repository contains a minimal React + TypeScript web app (Vite) that provid
 
 ## Project Overview
 
-This project is a frontend web application (React + Vite + TypeScript) intended to manage Docker resources from an intuitive web UI. It provides screens for:
+This project is a frontend web application (Next.js + React Compiler + TypeScript) intended to manage Docker resources from an intuitive web UI. It provides screens for:
 
 - Landing Website
 - Dashboard (Pods, Docker Images)
@@ -64,10 +64,10 @@ Quick setup — choose one:
 
 ## Tech Stack
 
-- Frontend: React + TypeScript
+- Frontend: Next.js + TypeScript
 - Backend: Node, Express, Go(Future APIs)
 - Database: Postgresql
-- Toolings: React Router, Zustland(Future)
+- Toolings: Next.js Router, Zustland(Future)
 - Bundler: Vite
 - Linting: ESLint (config provided in `eslint.config.js`)
 - Dev server: npm scripts defined in `package.json`
