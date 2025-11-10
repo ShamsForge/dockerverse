@@ -12,14 +12,12 @@ type Container = {
 type HomeProps = {
   running: Container[];
   containers: Container[];
-  onCreateContainer: () => void;
   onViewLogs: (id: string) => void;
 };
 
 export default function HomeTab({
   running,
   containers,
-  onCreateContainer,
   onViewLogs,
 }: HomeProps) {
   return (

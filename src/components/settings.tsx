@@ -1,65 +1,36 @@
-import React from "react";
+import React, { useState } from "react";
 
-type SettingsProps = {
-  user?: {
-    name: string;
-    username: string;
-    email: string;
-    createdAt: string;
-  };
-};
+export default function SettingsTab() {
+  const [port, setPort] = useState("8080");
 
-export default function SettingsTab({
-  user = {
-    name: "John Doe",
-    username: "johndoe",
-    email: "john@example.com",
-    createdAt: "2025-01-15",
-  },
-}: SettingsProps) {
   return (
-    <section className="max-w-2xl">
-      <h4 className="mb-4 text-lg font-medium">User Profile</h4>
-      <div className="rounded border p-6 space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Name</label>
-          <input
-            type="text"
-            value={user.name}
-            readOnly
-            className="w-full rounded border px-3 py-2 bg-zinc-100 dark:bg-zinc-800 text-sm"
-          />
+    <section className="max-w-3xl">
+      {/* Self-Hosting Configuration */}
+      <div>
+        <h4 className="mb-4 text-lg font-medium">Self-Hosting Configuration</h4>
+        <div className="rounded border p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Domain</label>
+            <div className="p-3 rounded bg-blue-50 dark:bg-blue-900/20 text-sm text-blue-900 dark:text-blue-100">
+              Your instance will use a random domain generated for this self-hosted deployment.
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Port</label>
+            <input
+              type="number"
+              value={port}
+              onChange={(e) => setPort(e.target.value)}
+              className="w-full rounded border px-3 py-2 bg-white dark:bg-zinc-800 text-sm"
+            />
+            <p className="text-xs text-zinc-500 mt-1">Default: 8080</p>
+          </div>
+
+          <button className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition mt-6">
+            Save Configuration
+          </button>
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Username</label>
-          <input
-            type="text"
-            value={user.username}
-            readOnly
-            className="w-full rounded border px-3 py-2 bg-zinc-100 dark:bg-zinc-800 text-sm"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Email</label>
-          <input
-            type="email"
-            value={user.email}
-            readOnly
-            className="w-full rounded border px-3 py-2 bg-zinc-100 dark:bg-zinc-800 text-sm"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Member Since</label>
-          <input
-            type="text"
-            value={user.createdAt}
-            readOnly
-            className="w-full rounded border px-3 py-2 bg-zinc-100 dark:bg-zinc-800 text-sm"
-          />
-        </div>
-        <button className="w-full rounded bg-gray-600 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 transition mt-6">
-          Edit Profile
-        </button>
       </div>
     </section>
   );

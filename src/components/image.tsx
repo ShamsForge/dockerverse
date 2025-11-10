@@ -9,9 +9,10 @@ type DockerImage = {
 type ImagesProps = {
   images: DockerImage[];
   onDeleteTag: (imageId: string, tag: string) => void;
+  onDeleteImage: (imageId: string) => void;
 };
 
-export default function ImagesTab({ images, onDeleteTag }: ImagesProps) {
+export default function ImagesTab({ images, onDeleteTag, onDeleteImage }: ImagesProps) {
   return (
     <section>
       <h4 className="mb-4 text-lg font-medium">Docker Images</h4>
@@ -26,7 +27,15 @@ export default function ImagesTab({ images, onDeleteTag }: ImagesProps) {
               key={img.id}
               className="rounded border p-4 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition"
             >
-              <div className="font-medium mb-2">{img.name}</div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="font-medium">{img.name}</div>
+                <button
+                  onClick={() => onDeleteImage(img.id)}
+                  className="text-xs px-2 py-1 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                >
+                  Delete Image
+                </button>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {img.tags.map((tag) => (
                   <div
