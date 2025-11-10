@@ -1,6 +1,10 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Modal from "./Modal";
+import HomeTab from "./home";
+import PodsTab from "./pods";
+import ImagesTab from "./image";
+import SettingsTab from "./settings";
 
 type Container = {
   id: string;
@@ -11,16 +15,40 @@ type Container = {
   createdAt: number;
 };
 
+type DockerImage = {
+  id: string;
+  name: string;
+  tags: string[];
+};
+
 const TABS = ["Home", "Pods", "Images", "Settings"];
 
 function generateId() {
   return Math.random().toString(36).slice(2, 9);
 }
 
+// dummy user data
+const DUMMY_USER = {
+  name: "John Doe",
+  username: "johndoe",
+  email: "john@example.com",
+  createdAt: "2025-01-15",
+};
+
+// dummy images
+const DUMMY_IMAGES: DockerImage[] = [
+  { id: "img1", name: "alpine", tags: ["latest", "3.18", "3.17"] },
+  { id: "img2", name: "node", tags: ["latest", "20", "18"] },
+  { id: "img3", name: "postgres", tags: ["latest", "15", "14"] },
+  { id: "img4", name: "nginx", tags: ["latest", "alpine"] },
+];
+
 export default function Tabs() {
   const [active, setActive] = useState<number>(0);
   const [containers, setContainers] = useState<Container[]>([]);
   const [openContainerId, setOpenContainerId] = useState<string | null>(null);
+  const [images, setImages] = useState<DockerImage[]>(DUMMY_IMAGES);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   function createContainer() {
     const id = generateId();
@@ -54,18 +82,33 @@ export default function Tabs() {
     }, 2200);
   }
 
+  function deleteImageTag(imageId: string, tag: string) {
+    setImages((s) =>
+      s.map((img) =>
+        img.id === imageId
+          ? { ...img, tags: img.tags.filter((t) => t !== tag) }
+          : img
+      ).filter((img) => img.tags.length > 0)
+    );
+  }
+
   const running = containers.filter((c) => c.status !== "stopped");
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black text-black dark:text-white p-6">
       <div className="mx-auto max-w-5xl">
+        {/* Tab Navigation */}
         <header className="flex items-center justify-between border-b pb-4">
           <nav className="flex items-center gap-4">
             {TABS.map((t, i) => (
               <button
                 key={t}
                 onClick={() => setActive(i)}
-                className={`rounded px-3 py-2 text-sm ${i === active ? "border-b-2 font-semibold" : "opacity-80"}`}
+                className={`rounded px-3 py-2 text-sm transition ${
+                  i === active
+                    ? "border-b-2 font-semibold border-blue-600"
+                    : "opacity-60 hover:opacity-100"
+                }`}
               >
                 {t}
               </button>
@@ -74,95 +117,84 @@ export default function Tabs() {
         </header>
 
         <div className="mt-4">
-          <div className="flex justify-end mb-4">
+          {/* Action Buttons */}
+          <div className="flex justify-end mb-6">
             {active === 0 && (
-              <button onClick={createContainer} className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700">
+              <button
+                onClick={createContainer}
+                className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition"
+              >
                 Create New Container
+              </button>
+            )}
+            {active === 1 && (
+              <button className="rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 transition">
+                New Pod
+              </button>
+            )}
+            {active === 2 && (
+              <button className="rounded bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 transition">
+                Add Image
               </button>
             )}
           </div>
 
           <main>
+            {/* Home Tab */}
             {active === 0 && (
-              <section>
-                <h4 className="mb-2 text-lg font-medium">Running Containers</h4>
-                <div className="space-y-3">
-                  {running.length === 0 && <div className="text-sm text-zinc-600">No running containers</div>}
-                  {running.map((c) => (
-                    <div key={c.id} className="flex items-center justify-between rounded border p-3">
-                      <div className="flex items-center gap-3">
-                        <span
-                          className={`inline-block h-2 w-2 rounded-full ${
-                            c.status === "running" ? "bg-green-500" : c.status === "initializing" ? "bg-yellow-400" : "bg-gray-400"
-                          }`}
-                        />
-                        <div>
-                          <div className="font-medium">{c.name}</div>
-                          <div className="text-sm text-zinc-600 dark:text-zinc-400">{c.image}</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => setOpenContainerId(c.id)} className="rounded border px-2 py-1 text-sm">
-                          View Logs
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-6">
-                  <h4 className="mb-2 text-lg font-medium">Recent Containers</h4>
-                  <div className="grid grid-cols-1 gap-2">
-                    {containers.slice(0, 5).map((c) => (
-                      <div key={c.id} className="rounded border p-2 text-sm">
-                        <div className="flex items-center justify-between">
-                          <div>{c.name}</div>
-                          <div className="text-zinc-500 text-sm">{c.status}</div>
-                        </div>
-                      </div>
-                    ))}
-                    {containers.length === 0 && <div className="text-sm text-zinc-600">No recent containers</div>}
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  <h4 className="mb-2 text-lg font-medium">Recent Images</h4>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-                    {Array.from(new Set(containers.map((c) => c.image))).slice(0, 8).map((img) => (
-                      <div key={img} className="rounded border p-2 text-sm">
-                        {img}
-                      </div>
-                    ))}
-                    {containers.length === 0 && <div className="text-sm text-zinc-600">No recent images</div>}
-                  </div>
-                </div>
-              </section>
+              <HomeTab
+                running={running}
+                containers={containers}
+                onCreateContainer={createContainer}
+                onViewLogs={setOpenContainerId}
+              />
             )}
 
-            {active === 1 && <div className="p-6">Pods / Services placeholder (will be wired to backend)</div>}
-            {active === 2 && <div className="p-6">Images placeholder (list and actions)</div>}
-            {active === 3 && <div className="p-6">Settings placeholder</div>}
+            {/* Pods Tab */}
+            {active === 1 && (
+              <PodsTab
+                containers={containers}
+                onViewDetails={setOpenContainerId}
+              />
+            )}
+
+            {/* Images Tab */}
+            {active === 2 && (
+              <ImagesTab images={images} onDeleteTag={deleteImageTag} />
+            )}
+
+            {/* Settings Tab */}
+            {active === 3 && <SettingsTab />}
           </main>
         </div>
       </div>
 
+      {/* Logs Modal */}
       <Modal
         open={!!openContainerId}
         onClose={() => setOpenContainerId(null)}
         title={openContainerId ? `${containers.find((c) => c.id === openContainerId)?.name ?? "Container"} Logs` : "Logs"}
       >
-        <div className="max-h-72 overflow-auto bg-black/5 p-3 rounded text-sm font-mono dark:bg-white/5 dark:text-white">
-          {openContainerId ? (
-            containers
-              .find((c) => c.id === openContainerId)
-              ?.logs.map((l, i) => (
-                <div key={i} className="whitespace-pre-wrap">
-                  {l}
-                </div>
-              ))
-          ) : (
-            <div>No logs</div>
-          )}
+        <div className="space-y-2">
+          <div className="max-h-96 overflow-auto bg-black/5 p-4 rounded text-xs font-mono dark:bg-white/5 dark:text-white">
+            {openContainerId && containers.find((c) => c.id === openContainerId) ? (
+              containers
+                .find((c) => c.id === openContainerId)
+                ?.logs.map((l, i) => (
+                  <div key={i} className="whitespace-pre-wrap">
+                    {l}
+                  </div>
+                ))
+            ) : (
+              <div>No logs available</div>
+            )}
+          </div>
+          <button
+            onClick={() => setOpenContainerId(null)}
+            className="w-full rounded bg-gray-600 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700 transition"
+          >
+            Close
+          </button>
         </div>
       </Modal>
     </div>
