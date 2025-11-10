@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  backend:
+    build: .
+    volumes:
+      - ./:/app
+      - /var/run/docker.sock:/var/run/docker.sock # give access to Docker socket
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+    restart: unless-stopped
