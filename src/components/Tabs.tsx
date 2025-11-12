@@ -1,9 +1,10 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Modal from "./Modal";
 import CreateContainerModal from "./CreateContainerModal";
 import AddImageModal from "./AddImageModal";
 import HomeTab from "./home";
+import api from "../lib/api";
 import PodsTab from "./pods";
 import ImagesTab from "./image";
 import SettingsTab from "./settings";
@@ -15,7 +16,7 @@ type Container = {
   status: "initializing" | "running" | "stopped";
   logs: string[];
   createdAt: number;
-  ports?: string[]; // e.g., ["8080:3000", "5432:5432"]
+  ports?: string[]; // ["8080:3000", "5432:5432"]
 };
 
 type DockerImage = {
@@ -43,65 +44,126 @@ export default function Tabs() {
   const [showCreateContainerModal, setShowCreateContainerModal] = useState(false);
   const [showAddImageModal, setShowAddImageModal] = useState(false);
 
-  function handleCreateContainer(data: { name: string; image: string; port: string }) {
-    // TODO: Replace with actual backend API call to POST /api/containers
-    const id = generateId();
-    const newContainer: Container = {
-      id,
-      name: data.name,
-      image: data.image,
-      status: "initializing",
-      logs: ["[init] creating container..."],
-      createdAt: Date.now(),
-      ports: [`${data.port}:${data.port}`],
-    };
+  // Load initial data from backend
+  useEffect(() => {
+    let mounted = true;
 
-    setContainers((s) => [newContainer, ...s]);
-    setOpenContainerId(id);
-    setShowCreateContainerModal(false);
-    console.log("Create container - awaiting backend implementation", data);
+    async function load() {
+      try {
+        // Fetch containers
+        const containersData: any = await api.fetchContainers();
+        if (mounted) setContainers(Array.isArray(containersData) ? containersData : containersData);
+
+        // Fetch images (raw) and normalize to DockerImage[]
+        const rawImages: any[] = await api.fetchImagesRaw();
+        const arr = Array.isArray(rawImages) ? rawImages : (rawImages as any).images || [];
+        const parsed: DockerImage[] = (arr || [])
+          .map((it: any) => {
+            const id = it.Id || it.Id || it.id || (it.Id && String(it.Id)) || generateId();
+            const repoTags = it.RepoTags || it.repoTags || [];
+            const tags = Array.isArray(repoTags) ? repoTags.filter(Boolean).map((rt: string) => {
+              const parts = rt.split(":");
+              return parts.slice(1).join(":");
+            }).filter(Boolean) : (it.tags || []);
+            const name = (Array.isArray(repoTags) && repoTags[0] ? String(repoTags[0]).split(":").slice(0, -1).join(":") : (it.name || String(id)));
+            return { id: String(id), name, tags } as DockerImage;
+          }).filter((p: DockerImage) => p.tags && p.tags.length > 0);
+
+        if (mounted) setImages(parsed);
+      } catch (err) {
+        console.error("Error loading initial data:", err);
+      }
+    }
+
+    load();
+
+    const interval = setInterval(load, 5000);
+    return () => { mounted = false; clearInterval(interval); };
+  }, []);
+
+
+  async function handleCreateContainer(data: { name: string; image: string; port: string }) {
+    try {
+      // Call backend to create container
+      await api.createContainer({ name: data.name, image: data.image, port: data.port });
+
+      // Refresh container list from backend
+      const updated = await api.fetchContainers();
+      setContainers(Array.isArray(updated) ? updated : updated);
+
+      setShowCreateContainerModal(false);
+    } catch (err) {
+      console.error('Failed to create container:', err);
+      alert('Failed to create container. See console for details.');
+    }
   }
 
-  function handleAddImage(data: { repository: string; version: string }) {
-    // TODO: Replace with actual backend API call to POST /api/images
-    const id = `img-${generateId()}`;
-    const newImage: DockerImage = {
-      id,
-      name: data.repository,
-      tags: [data.version],
-    };
+  async function handleAddImage(data: { repository: string; version: string }) {
+    try {
+      await api.pullImage(data.repository, data.version || 'latest');
+      // refresh images
+      const raw = await api.fetchImagesRaw();
+      const arr = Array.isArray(raw) ? raw : (raw as any).images || [];
+      const parsed: DockerImage[] = (arr || [])
+        .map((it: any) => {
+          const id = it.Id || it.id || generateId();
+          const repoTags = it.RepoTags || it.repoTags || [];
+          const tags = Array.isArray(repoTags) ? repoTags.filter(Boolean).map((rt: string) => {
+            const parts = rt.split(":");
+            return parts.slice(1).join(":");
+          }).filter(Boolean) : (it.tags || []);
+          const name = (Array.isArray(repoTags) && repoTags[0] ? String(repoTags[0]).split(":").slice(0, -1).join(":") : (it.name || String(id)));
+          return { id: String(id), name, tags } as DockerImage;
+        }).filter((p: DockerImage) => p.tags && p.tags.length > 0);
 
-    setImages((s) => [newImage, ...s]);
-    setShowAddImageModal(false);
-    console.log("Add image - awaiting backend implementation", data);
+      setImages(parsed);
+      setShowAddImageModal(false);
+    } catch (err) {
+      console.error('Failed to pull image:', err);
+      alert('Failed to pull image. See console for details.');
+    }
   }
 
-  function deleteContainer(containerId: string) {
-    // TODO: Replace with actual backend API call to DELETE /api/containers/{id}
-    setContainers((s) => s.filter((c) => c.id !== containerId));
-    setOpenContainerId(null);
-    console.log("Delete container - awaiting backend implementation");
+  async function deleteContainer(containerId: string) {
+    try {
+      await api.deleteContainer(containerId);
+      setContainers((s) => s.filter((c) => c.id !== containerId));
+      setOpenContainerId(null);
+    } catch (err) {
+      console.error('Failed to delete container:', err);
+      alert('Failed to delete container.');
+    }
   }
 
-  function deleteImageTag(imageId: string, tag: string) {
-    // TODO: Replace with actual backend API call to DELETE /api/images/{id}/tags/{tag}
-    setImages((s) =>
-      s.map((img) =>
-        img.id === imageId
-          ? { ...img, tags: img.tags.filter((t) => t !== tag) }
-          : img
-      ).filter((img) => img.tags.length > 0)
-    );
-    console.log("Delete image tag - awaiting backend implementation");
+  async function deleteImageTag(imageId: string, tag: string) {
+    // Note: Backend doesn't yet support DELETE /api/images/{id}/tags/{tag}
+    // For now, we update local state. TODO: wire to backend once endpoint exists
+    try {
+      setImages((s) =>
+        s.map((img) =>
+          img.id === imageId
+            ? { ...img, tags: img.tags.filter((t) => t !== tag) }
+            : img
+        ).filter((img) => img.tags.length > 0)
+      );
+    } catch (err) {
+      console.error('Failed to delete image tag:', err);
+    }
   }
 
-  function deleteImage(imageId: string) {
-    // TODO: Replace with actual backend API call to DELETE /api/images/{id}
-    setImages((s) => s.filter((img) => img.id !== imageId));
-    console.log("Delete image - awaiting backend implementation");
+  async function deleteImage(imageId: string) {
+    try {
+      await api.deleteImage(imageId);
+      setImages((s) => s.filter((img) => img.id !== imageId));
+    } catch (err) {
+      console.error('Failed to delete image:', err);
+      alert('Failed to delete image.');
+    }
   }
 
   const running = containers.filter((c) => c.status !== "stopped");
+
+  const imageTags = images.flatMap((img) => (img.tags || []).map((t) => `${img.name}:${t}`));
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black text-black dark:text-white p-6">
@@ -283,7 +345,7 @@ export default function Tabs() {
           open={showCreateContainerModal}
           onClose={() => setShowCreateContainerModal(false)}
           onSubmit={handleCreateContainer}
-          availableImages={STATIC_IMAGES}
+          availableImages={imageTags.length > 0 ? imageTags : ["alpine:latest", "node:18", "postgres:15", "nginx:latest"]}
         />
 
         {/* Add Image Modal */}
